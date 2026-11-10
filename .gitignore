@@ -1,0 +1,35 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Pytest & Cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Secretos y variables de entorno
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# IDEs y SO
+.vscode/
+.idea/
+Thumbs.db
+[Dd]esktop.ini
+
