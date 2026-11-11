@@ -6,7 +6,7 @@
 **Periodo Académico:** 2026-2  
 **Docente Titular:** Ing. Felipe Gutiérrez Isaza  
 **Responsable de Calidad:** Steven Rendón  
-**Hito de Entrega:** Seguimiento 1 (`entrega-s1`) / Preparación para Seguimiento 2 (`entrega-s2`)  
+**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)  
 
 ---
 
@@ -14,26 +14,28 @@
 
 El presente informe consolida el marco de evaluación de calidad de software aplicado al sistema **AllQuality**, fundamentado en el estándar internacional **ISO/IEC 25010** (Modelo de Calidad del Producto) y las directrices de mantenimiento de **ISO/IEC 14764**.
 
-Este documento establece las métricas de calidad objetivas, los umbrales de aceptación y la bitácora inicial de defectos técnicos detectados durante la construcción y verificación del software.
+Este documento establece las métricas de calidad objetivas, los umbrales de aceptación y la bitácora de defectos técnicos detectados durante la construcción y verificación del software. El alcance evaluado corresponde a la **Entrega 2**; los requisitos de compras, anulación de ventas, reportes y respaldo integrado se reservan para la entrega final y se detallan en la [verificación de requisitos](verificacion-requisitos.md).
 
 ---
 
 ## 2. Evaluación de Características de Calidad (ISO/IEC 25010)
 
-| Característica ISO/IEC 25010 | Métrica Evaluada | Meta de Calidad | Método de Verificación | Estado S1 |
+| Característica ISO/IEC 25010 | Métrica Evaluada | Meta de Calidad | Método de Verificación | Resultado |
 | :--- | :--- | :---: | :--- | :---: |
-| **1. Adecuación Funcional** | Porcentaje de pruebas de catálogo e inventario aprobadas | 100% | Ejecución automatizada con `pytest` | **100% (14/14 tests)** |
-| **2. Eficiencia de Desempeño** | Latencia en consultas de búsqueda y catálogo | $\le 1.5\text{ s}$ | Pruebas de integración HTTP locales | **Conforme (< 50 ms)** |
-| **3. Compatibilidad** | Intercambio de datos JSON y compatibilidad SQL | 100% | Contratos de API REST estandarizados | **Conforme** |
-| **4. Capacidad de Interacción** | Claridad en códigos de error y respuestas HTTP | Códigos 200, 201, 400, 409, 422 | Manejo centralizado de excepciones | **Conforme** |
-| **5. Fiabilidad** | Cero inventarios negativos y consistencia de stock | 0 sobreventas | Validación en base de datos (`CHECK stock >= 0`) y servicios | **Conforme** |
-| **6. Seguridad** | Rechazo de credenciales inválidas y roles | 100% pruebas de acceso | Verificación de credenciales en `test_auth.py` | **Conforme** |
-| **7. Mantenibilidad** | Modularidad de código y desacoplamiento | Capas separadas | Arquitectura en Rutas, Servicios y Base de datos | **Conforme** |
-| **8. Flexibilidad / Portabilidad** | Ejecución nativa sin dependencias de virtualización | Cero Docker | Python 3.12 + MySQL (InnoDB) | **Conforme** |
+| **1. Adecuación Funcional** | Porcentaje de pruebas automatizadas aprobadas | 100% | Ejecución automatizada con `pytest` | **100% de pruebas aprobadas (49/49); cobertura 90%** |
+| **2. Eficiencia de Desempeño** | Latencia en consultas de búsqueda y catálogo | $\le 1.5\text{ s}$ | Pruebas locales; benchmark formal pendiente | **Parcial: respuestas locales rápidas, sin benchmark con 1.000 repuestos** |
+| **3. Compatibilidad** | Intercambio de datos JSON y compatibilidad SQL | 100% | API REST estandarizada y cliente React conectado | **Conforme (React + API JSON + MariaDB 10.4.32)** |
+| **4. Capacidad de Interacción** | Claridad en códigos de error y respuestas HTTP | Códigos 200, 201, 400, 401, 403, 404, 409, 422 | Manejo centralizado de excepciones y mensajes en la interfaz | **Conforme (API + interfaz React)** |
+| **5. Fiabilidad** | Cero inventarios negativos y consistencia de stock | 0 sobreventas | Validación en servicios, transacción `FOR UPDATE` y `CHECK` en MariaDB | **Parcial: venta atómica y rollback manual verificados; concurrencia real pendiente** |
+| **6. Seguridad** | Hash de contraseñas, token firmado y roles en servidor | 100% pruebas de acceso | `werkzeug.security`, `itsdangerous`, `@require_auth` y `@require_role` | **Conforme; queda endurecer `SECRET_KEY`, HTTPS y CORS para producción** |
+| **7. Mantenibilidad** | Modularidad de código y desacoplamiento | Capas separadas | Arquitectura en Rutas, Servicios y Base de datos | **Conforme (49 pruebas, 90% de cobertura)** |
+| **8. Flexibilidad / Portabilidad** | Ejecución nativa sin dependencias de virtualización | Cero Docker | Python 3.11.9 + MariaDB (InnoDB) + Vite | **Conforme** |
+
+> **Limitación de la medición:** la suite usa una conexión MySQL simulada (`FakeMySQLConnection`), por lo que los resultados de concurrencia y rendimiento no sustituyen una prueba contra el motor real. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MariaDB/MySQL real queda para la entrega final.
 
 ---
 
-## 3. Bitácora de Defectos Técnicos (Bug Log - DEF-01 a DEF-04)
+## 3. Bitácora de Defectos Técnicos (Bug Log - DEF-01 a DEF-05)
 
 Durante las sesiones de inspección de código y pruebas tempranas, el responsable de calidad (**Steven Rendón**) y el responsable de pruebas (**Cristian Carabalí**) registraron y resolvieron los siguientes defectos:
 
@@ -59,7 +61,13 @@ Durante las sesiones de inspección de código y pruebas tempranas, el responsab
 * **Severidad:** Crítica | **Módulo:** `src/backend/services/venta_service.py`
 * **Causa Raíz:** Si el segundo repuesto no tenía stock suficiente, el primer repuesto ya había sido descontado sin reversión (Rollback).
 * **Solución Aplicada:** Transacción atómica en dos fases: validación total de stock previo a la deducción y bloque `try/except` con `conn.rollback()` ante cualquier falla.
-* **Prueba Asociada:** `test_inventario_s1.py::test_bloqueo_sobreventa_stock_insuficiente`.
+* **Prueba Asociada:** `test_inventario_s1.py::test_bloqueo_sobreventa_stock_insuficiente` y verificación manual multiítem contra MariaDB.
+
+### DEF-05: Autenticación Simulada y Roles Solo en la Interfaz
+* **Severidad:** Crítica | **Módulo:** `auth_utils.py`, `routes/auth_routes.py`, rutas de negocio
+* **Causa Raíz:** El token no estaba firmado y el backend no verificaba el rol antes de ejecutar operaciones administrativas; ocultar botones en React no impedía llamar la API directamente.
+* **Solución Aplicada:** Contraseñas con `pbkdf2:sha256`, token firmado con `itsdangerous`, expiración de 8 horas, decoradores `@require_auth`/`@require_role` y verificación del estado activo en cada petición.
+* **Prueba Asociada:** `test_auth_roles.py`, `test_usuarios.py` y verificación manual con Playwright.
 
 ---
 
@@ -67,7 +75,8 @@ Durante las sesiones de inspección de código y pruebas tempranas, el responsab
 
 * **Mantenimiento Correctivo:** Corrección de validaciones de límites numéricos (precios, stock) y manejo centralizado de errores HTTP 400, 409 y 422.
 * **Mantenimiento Preventivo:** Estandarización de tipos numéricos (`float`/`int`) y exclusión estricta de archivos temporales mediante `.gitignore`.
-* **Mantenimiento Perfectivo:** Desacoplamiento de la lógica de negocio en clases de servicio (`ProductoService`, `InventarioService`, `VentaService`), facilitando la integración con el cliente en React.
+* **Mantenimiento Perfectivo:** Desacoplamiento de la lógica de negocio en clases de servicio (`ProductoService`, `CategoriaService`, `InventarioService`, `UsuarioService`, `VentaService`), incorporación de un cliente React 18 + Vite con diseño blanco y negro, autenticación firmada y administración de usuarios.
+* **Mantenimiento Evolutivo (entrega final):** compras/recepción de mercancía, anulación de ventas, reportes comerciales, respaldo/restauración integrados, pruebas de concurrencia e integración automatizada con MariaDB.
 
 ---
 
