@@ -113,6 +113,31 @@ class VentaService:
             conn.close()
 
     @staticmethod
+    def listar_ventas(limit=50):
+        conn = get_db()
+        cursor = conn.cursor()
+        query = """
+            SELECT v.id,
+                   v.numero_factura,
+                   v.subtotal,
+                   v.iva,
+                   v.total,
+                   v.estado,
+                   v.notas,
+                   v.created_at,
+                   u.nombre AS vendedor_nombre
+            FROM ventas v
+            JOIN usuarios u ON v.usuario_id = u.id
+            ORDER BY v.created_at DESC, v.id DESC
+            LIMIT %s
+        """
+        cursor.execute(query, (int(limit),))
+        ventas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return ventas
+
+    @staticmethod
     def obtener_venta(venta_id):
         conn = get_db()
         cursor = conn.cursor()

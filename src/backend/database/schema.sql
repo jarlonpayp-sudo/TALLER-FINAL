@@ -105,9 +105,9 @@ INSERT IGNORE INTO roles (id, nombre, descripcion) VALUES
 
 -- Contraseña por defecto: Admin123* (hash SHA-256 / Pbkdf2)
 INSERT IGNORE INTO usuarios (id, rol_id, nombre, email, password_hash, activo) VALUES
-(1, 1, 'Alejandro Londoño', 'admin@allquality.com', 'scrypt:32768:8:1$vY3P8Q5k$e12d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', 1),
-(2, 2, 'Cristian Carabalí', 'vendedor@allquality.com', 'scrypt:32768:8:1$vY3P8Q5k$e12d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', 1),
-(3, 3, 'Steven Rendón', 'bodega@allquality.com', 'scrypt:32768:8:1$vY3P8Q5k$e12d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', 1);
+(1, 1, 'Alejandro Londoño', 'admin@allquality.com', 'pbkdf2:sha256:1000000$SSDmAem1zvm5BJlR$ef3fd42b108d997c03970069576a7e675685ed71853f2984aa81f65cdeeac4b1', 1),
+(2, 2, 'Cristian Carabalí', 'vendedor@allquality.com', 'pbkdf2:sha256:1000000$GL9QXf8uwKPxWPhM$6ef23813eba1d98c5a09f14d65c0b557ec1133582846a621e5babec3047e271c', 1),
+(3, 3, 'Steven Rendón', 'bodega@allquality.com', 'pbkdf2:sha256:1000000$Y83sSRiXGebBJGgk$bf15d53bcc456f364e00b5f3bf8222008b2cb9e15fb1ee6e876bf2b5ffa98d51', 1);
 
 INSERT IGNORE INTO categorias (id, nombre, descripcion) VALUES
 (1, 'Frenos', 'Pastillas, bandas, discos, bombas y líquidos de freno'),

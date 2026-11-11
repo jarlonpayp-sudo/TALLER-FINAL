@@ -4,8 +4,10 @@ from flask_cors import CORS
 from config import Config
 from routes.auth_routes import auth_bp
 from routes.producto_routes import producto_bp
+from routes.categoria_routes import categoria_bp
 from routes.inventario_routes import inventario_bp
 from routes.venta_routes import venta_bp
+from routes.usuario_routes import usuario_bp
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -20,15 +22,17 @@ def create_app(test_config=None):
     # Registrar Blueprints de la API REST
     app.register_blueprint(auth_bp)
     app.register_blueprint(producto_bp)
+    app.register_blueprint(categoria_bp)
     app.register_blueprint(inventario_bp)
     app.register_blueprint(venta_bp)
+    app.register_blueprint(usuario_bp)
 
     @app.route("/api/v1/health", methods=["GET"])
     def health_check():
         return jsonify({
             "status": "online",
             "sistema": "AllQuality - Gestión Comercial de Repuestos para Motocicletas",
-            "version": "1.0.0-s1",
+            "version": "1.0.0",
             "motor_bd": "MySQL (InnoDB)"
         }), 200
 

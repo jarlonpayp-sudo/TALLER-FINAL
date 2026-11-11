@@ -2,6 +2,7 @@ import os
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "allquality-insecure-dev-secret-key-2026")
+    TOKEN_MAX_AGE = int(os.getenv("TOKEN_MAX_AGE", "28800"))
     
     # Configuración exclusiva para MySQL / MariaDB (XAMPP / Laragon / Nativo)
     DB_HOST = os.getenv("DB_HOST", "127.0.0.1")

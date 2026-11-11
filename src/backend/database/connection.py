@@ -14,6 +14,7 @@ def get_db():
             user=Config.DB_USER,
             password=Config.DB_PASSWORD,
             database=Config.DB_NAME,
+            charset="utf8mb4",
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=False
         )

@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
+from auth_utils import require_auth, require_role
 from services.inventario_service import InventarioService
 
 inventario_bp = Blueprint("inventario", __name__, url_prefix="/api/v1/inventario")
 
 @inventario_bp.route("/alertas", methods=["GET"])
+@require_auth
 def obtener_alertas():
     alertas = InventarioService.obtener_alertas()
     return jsonify({
@@ -12,6 +14,7 @@ def obtener_alertas():
     }), 200
 
 @inventario_bp.route("/ajuste", methods=["POST"])
+@require_role("ADMIN", "INVENTARIO")
 def ajustar_stock():
     data = request.get_json() or {}
     repuesto_id = data.get("repuesto_id")

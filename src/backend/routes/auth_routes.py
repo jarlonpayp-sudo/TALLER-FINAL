@@ -1,7 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
+from werkzeug.security import check_password_hash
+
+from auth_utils import create_token
 from database.connection import get_db
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
+
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
@@ -27,14 +31,8 @@ def login():
     if not user.get("activo"):
         return jsonify({"error": "La cuenta se encuentra inactiva."}), 403
 
-    # Contraseñas autorizadas para desarrollo/evaluación
-    valido = False
-    if password in ["Admin123*", "vendedor123", "secret"]:
-        valido = True
-    elif user.get("password_hash") == password:
-        valido = True
-
-    if not valido:
+    password_hash = user.get("password_hash") or ""
+    if not password_hash or not check_password_hash(password_hash, password):
         return jsonify({"error": "Credenciales inválidas."}), 401
 
     return jsonify({
@@ -45,5 +43,5 @@ def login():
             "email": user["email"],
             "rol": user["rol"]
         },
-        "token": f"mock-jwt-token-{user['id']}-{user['rol']}"
+        "token": create_token(user)
     }), 200
