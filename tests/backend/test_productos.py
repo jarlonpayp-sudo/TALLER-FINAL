@@ -39,6 +39,20 @@ def test_crear_repuesto_valido(client):
     assert data["producto"]["codigo_referencia"] == "DISC-FR-NMAX155"
     assert data["producto"]["stock_actual"] == 10
 
+def test_rechazo_repuesto_sin_existencias_iniciales(client):
+    """
+    RF-02: El stock inicial es obligatorio aunque su valor válido pueda ser cero.
+    """
+    incompleto = {
+        "categoria_id": 1,
+        "codigo_referencia": "SIN-STOCK-001",
+        "nombre": "Repuesto sin stock informado",
+        "precio_venta": 25000.0,
+    }
+    response = client.post("/api/v1/productos", json=incompleto)
+    assert response.status_code == 422
+    assert "existencias iniciales" in response.get_json()["error"]
+
 def test_rechazo_codigo_duplicado(client):
     """
     CP-03: Rechazo por código de referencia duplicado (HTTP 409 Conflict)

@@ -6,7 +6,7 @@
 **Periodo Académico:** 2026-2  
 **Docente Titular:** Ing. Felipe Gutiérrez Isaza  
 **Responsable de Pruebas (QA Lead):** Cristian Carabalí  
-**Hito de Entrega:** Seguimiento 1 (`entrega-s1`)  
+**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)  
 
 ---
 
@@ -14,17 +14,20 @@
 
 El presente documento constituye el **Plan Maestro de Pruebas** para el sistema comercial **AllQuality**, estructurado bajo los lineamientos del estándar internacional **ISO/IEC/IEEE 29119** (Software Testing) y alineado a los criterios de calidad de la norma **ISO/IEC 25010**.
 
-El propósito fundamental de este plan es guiar, diseñar, parametrizar y automatizar las actividades de verificación y validación del software para el **Seguimiento 1 (S1)**, garantizando que el núcleo del catálogo de repuestos, el control de existencias y las validaciones de negocio cumplan con los criterios de aceptación antes de avanzar a la fase de integración transaccional avanzada.
+El propósito fundamental de este plan es guiar, diseñar, parametrizar y automatizar las actividades de verificación y validación del software. La versión actual —correspondiente a la **Entrega 2**— incorpora una suite de **49 pruebas**, la medición de cobertura, las validaciones transaccionales de inventario y ventas, el control de permisos por rol y la verificación de la integración con el cliente React.
 
 ---
 
-## 2. Alcance de las Pruebas (Seguimiento 1)
+## 2. Alcance de las Pruebas
 
-### Módulos Incluidos en el Alcance de S1:
-1. **Módulo de Autenticación y Control de Acceso:** Inicio de sesión y restricciones básicas por rol (`ADMIN`, `VENDEDOR`, `INVENTARIO`).
+### Módulos incluidos en el alcance:
+1. **Módulo de Autenticación y Control de Acceso:** Inicio de sesión con contraseñas hash, token firmado, restricciones de rol (`ADMIN`, `VENDEDOR`, `INVENTARIO`) y revocación por suspensión.
 2. **Módulo de Catálogo de Repuestos y Accesorios:** Creación, edición, consulta, desactivación lógica y búsqueda por código OEM, nombre y categoría.
-3. **Módulo de Control de Inventario Inicial:** Consulta de saldos, validación de stock mínimo y disparador de alertas.
-4. **Validaciones de Integridad de Datos:** Reglas de negocio que prohíben precios $\le 0$, existencias $< 0$ y códigos duplicados.
+3. **Módulo de Control de Inventario:** Consulta de saldos, validación de stock mínimo, alertas y ajustes auditados.
+4. **Módulo de Ventas:** Registro transaccional, historial, consulta de factura y descuento atómico de existencias.
+5. **Módulo de Administración de Usuarios:** Alta de colaboradores, cambio de rol, suspensión y reactivación por parte del `ADMIN`.
+6. **Validaciones de Integridad de Datos:** Reglas de negocio que prohíben precios $\le 0$, existencias $< 0$ y códigos duplicados.
+6. **Cliente web React:** Navegación, formularios, búsqueda, carrito, mensajes de error y diseño responsivo.
 
 ---
 
@@ -90,7 +93,7 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 
 ---
 
-## 5. Catálogo Detallado de Casos de Prueba (CP-01 a CP-08)
+## 5. Catálogo Detallado de Casos de Prueba (CP-01 a CP-13)
 
 ### CP-01: Autenticación con Credenciales Válidas e Inválidas
 * **Requisito Asociado:** RF-01 | **Tipo:** Seguridad / Integración
@@ -116,45 +119,88 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
   - Paso 2 retorna `422 Unprocessable Entity` ("El precio debe ser mayor a 0").
 
 ### CP-04: Búsqueda y Filtrado Multicriterio de Repuestos
-* **Requisito Asociado:** RF-03, RF-16 | **Tipo:** Desempeño / Funcional
+* **Requisito Asociado:** RF-03 | **Tipo:** Funcional
 * **Entradas:** Petición `GET /api/v1/productos?q=Yamaha&cat=1`
-* **Resultado Esperado:** Retorna arreglo JSON con los repuestos compatibles con "Yamaha" pertenecientes a la categoría dada. Tiempo de respuesta $\le 300\text{ ms}$.
+* **Resultado Esperado:** Retorna un arreglo JSON con los repuestos compatibles con "Yamaha" pertenecientes a la categoría dada; una búsqueda sin coincidencias retorna `200 OK` con lista vacía.
 
 ### CP-05: Verificación de Alertas de Stock Bajo
-* **Requisito Asociado:** RF-04, RF-11 | **Tipo:** Lógica de Dominio / BVA
+* **Requisito Asociado:** RF-11 | **Tipo:** Lógica de Dominio / BVA
 * **Precondición:** Producto A con `stock = 3`, `stock_minimo = 5`; Producto B con `stock = 10`, `stock_minimo = 5`.
 * **Petición:** `GET /api/v1/inventario/alertas`
 * **Resultado Esperado:** La respuesta incluye al Producto A con bandera `alerta_stock = true` y omite al Producto B.
 
 ### CP-06: Consulta y Actualización Controlada de Existencias
-* **Requisito Asociado:** RF-03, RF-06 | **Tipo:** Integración
+* **Requisito Asociado:** RF-09 (ajuste manual), RF-18 | **Tipo:** Integración
 * **Pasos:** Modificar existencias mediante endpoint de ajuste administrativo autorizado.
 * **Resultado Esperado:** El saldo en base de datos se actualiza exactamente por la cantidad indicada y genera registro de auditoría.
 
 ### CP-07: Bloqueo de Existencias Negativas
-* **Requisito Asociado:** RF-07, RNF-03 | **Tipo:** Fiabilidad / Robustez
-* **Pasos:** Intentar descontar 10 unidades sobre un repuesto con 4 unidades disponibles.
-* **Resultado Esperado:** Rechazo con `400 Bad Request` ("Stock insuficiente para realizar la operación") y el inventario permanece inalterado en 4.
+* **Requisito Asociado:** RF-06, RF-07, RNF-04 | **Tipo:** Fiabilidad / Robustez
+* **Pasos:** Intentar vender 10 unidades sobre un repuesto con 4 disponibles y repetir una venta multiítem donde una línea no tiene stock.
+* **Resultado Esperado:** Rechazo con `400 Bad Request` y mensaje con las unidades disponibles; ninguna línea descuenta stock si falla la transacción.
 
 ### CP-08: Desactivación Lógica de Repuesto
-* **Requisito Asociado:** RF-02 | **Tipo:** Integridad Referencial
+* **Requisito Asociado:** RF-04 | **Tipo:** Integridad Referencial
 * **Pasos:** Enviar `DELETE /api/v1/productos/1`.
 * **Resultado Esperado:** El registro no se elimina físicamente de la base de datos (se fija `activo = 0`). Queda oculto del mostrador de ventas pero preserva el historial comercial.
+
+### CP-09: Actualización de Datos de Catálogo
+* **Requisito Asociado:** RF-04 | **Tipo:** Funcional / Integración
+* **Pasos:** Enviar `PUT /api/v1/productos/1` con nombre, categoría, códigos y precios válidos; repetir con un código de otro producto y con precio cero.
+* **Resultado Esperado:** La actualización válida retorna `200 OK` y conserva el stock; el código duplicado retorna `409 Conflict`; el precio inválido retorna `422 Unprocessable Entity`.
+
+### CP-10: Historial y Consulta de Ventas
+* **Requisito Asociado:** RF-05 | **Tipo:** Funcional / Integración
+* **Pasos:** Registrar una venta y consultar `GET /api/v1/ventas?limit=10`; abrir `GET /api/v1/ventas/{id}`.
+* **Resultado Esperado:** El historial retorna las facturas con vendedor, fecha, estado y total; el detalle incluye las líneas con cantidad, precio histórico y subtotal.
+
+### CP-11: Control de Permisos por Rol
+* **Requisito Asociado:** RF-13 | **Tipo:** Seguridad / Integración
+* **Pasos:** Solicitar un endpoint protegido sin token, con token inválido y con token de `VENDEDOR`; intentar crear un producto y ajustar inventario con el rol `VENDEDOR`; ajustar stock con el rol `INVENTARIO`.
+* **Resultado Esperado:** Sin token o con token inválido se retorna `401`; las escrituras no autorizadas retornan `403`; `VENDEDOR` conserva acceso de lectura y `INVENTARIO` puede ajustar stock.
+
+### CP-12: Administración de Usuarios y Roles
+* **Requisito Asociado:** RF-12 | **Tipo:** Funcional / Seguridad
+* **Pasos:** Como `ADMIN`, listar usuarios y roles, crear un colaborador, iniciar sesión con él, cambiar su rol, suspenderlo y reactivarlo. Intentar las mismas operaciones con `VENDEDOR`.
+* **Resultado Esperado:** `ADMIN` completa el ciclo; el nuevo colaborador puede iniciar sesión mientras esté activo; la suspensión revoca el acceso y su token anterior; `VENDEDOR` recibe `403`.
+
+### CP-13: Credenciales Seguras y Revocación de Sesión
+* **Requisito Asociado:** RF-01, RNF-02 | **Tipo:** Seguridad
+* **Pasos:** Iniciar sesión con credenciales válidas e inválidas, usar un token firmado, suspender una cuenta y reutilizar el token emitido.
+* **Resultado Esperado:** Las credenciales válidas retornan `200 OK` con token; las inválidas, `401`; un token inválido o de una cuenta suspendida, `401`; la contraseña no se devuelve en ninguna respuesta.
 
 ---
 
 ## 6. Matriz de Trazabilidad de Requisitos (RTM)
 
-| Código Requisito | Descripción del Requisito | Caso de Prueba | Suite Automatizada (pytest) | Criterio de Calidad |
+| Código | Requisito | Caso | Evidencia automatizada / manual | Estado Entrega 2 |
 | :---: | :--- | :---: | :--- | :---: |
-| **RF-01** | Autenticación y roles | **CP-01** | `test_auth.py::test_login_valido_invalido` | Seguridad |
-| **RF-02** | Gestión de repuestos | **CP-02, CP-03, CP-08** | `test_productos.py::test_crear_producto_valido` | Adecuación Funcional |
-| **RF-03** | Búsqueda y catálogo | **CP-04** | `test_productos.py::test_buscar_productos_filtros` | Usabilidad / Desempeño |
-| **RF-04** | Alertas de stock bajo | **CP-05** | `test_inventario.py::test_alertas_stock_minimo` | Fiabilidad / Operación |
-| **RF-06** | Actualización de stock | **CP-06** | `test_inventario.py::test_ajuste_inventario` | Consistencia de Datos |
-| **RF-07** | Validación anti-sobreventa | **CP-07** | `test_inventario.py::test_bloqueo_stock_negativo` | Fiabilidad e Integridad |
-| **RNF-01** | Tiempo respuesta $< 1.5$s | **CP-04** | `test_productos.py::test_rendimiento_busqueda` | Eficiencia de Desempeño |
-| **RNF-08** | Validación de entradas | **CP-03, CP-07** | `test_productos.py::test_rechazo_valores_limite` | Adecuación Funcional |
+| **RF-01** | Autenticación y sesión | CP-01, CP-13 | `test_auth.py`; `test_auth_roles.py`; verificación manual de login | Cumple |
+| **RF-02** | Crear y administrar catálogo | CP-02, CP-03, CP-09 | `test_productos.py`; `test_api_extra.py` | Cumple |
+| **RF-03** | Consultar y buscar productos | CP-04 | `test_productos.py`, `test_api_extra.py` | Cumple |
+| **RF-04** | Editar o desactivar repuesto | CP-08, CP-09 | `test_productos.py`, `test_api_extra.py` | Cumple |
+| **RF-05** | Registrar venta | CP-10 | `test_inventario_s1.py`, `test_api_extra.py`, venta manual en MariaDB | Cumple |
+| **RF-06** | Actualización atómica de inventario | CP-07, CP-10 | `test_venta_descuenta_inventario_atomicamente`; rollback multiítem manual | Cumple |
+| **RF-07** | Anti-sobreventa | CP-07 | `test_bloqueo_sobreventa_stock_insuficiente`; verificación manual | Cumple |
+| **RF-08** | Compras a proveedores | — | Sin módulo de compras | Pendiente entrega final |
+| **RF-09** | Entrada y confirmación de mercancía | CP-06 | Ajuste manual auditado; no existe recepción de compras | Parcial |
+| **RF-10** | Anulación de ventas | — | Sin endpoint de anulación | Pendiente entrega final |
+| **RF-11** | Alertas de stock bajo | CP-05 | `test_inventario_s1.py` | Cumple |
+| **RF-12** | Administrar usuarios y roles | CP-12 | `test_usuarios.py`; verificación con Playwright | Cumple |
+| **RF-13** | Control de permisos por rol | CP-11 | `test_auth_roles.py`; verificación con Playwright | Cumple |
+| **RF-14** | Copias de seguridad | — | Solo disponible el procedimiento manual de `mysqldump` | Pendiente entrega final |
+| **RF-15** | Restauración de datos | — | Sin flujo integrado | Pendiente entrega final |
+| **RF-16** | Reportes comerciales | — | Sin reportes por periodo ni rotación | Pendiente entrega final |
+| **RF-17** | Cálculo exacto de totales | CP-02, CP-10 | Columnas `DECIMAL(12,2)` verificadas en MariaDB | Cumple |
+| **RF-18** | Historial de auditoría | CP-06, CP-07, CP-10 | Registros de venta y ajuste verificados en MariaDB | Cumple |
+| **RNF-01** | Rendimiento p95 ≤ 1.5 s | — | Benchmark formal pendiente | Parcial |
+| **RNF-02** | Hash de contraseñas y roles en servidor | CP-13 | `werkzeug.security`, token firmado y pruebas 401/403 | Cumple |
+| **RNF-03** | Usabilidad y flujo de venta | CP-10 | Verificación manual en Chrome | Cumple |
+| **RNF-04** | ACID y cero sobreventas | CP-07 | `FOR UPDATE`, `rollback`; concurrencia real pendiente | Parcial |
+| **RNF-05** | Compatibilidad de navegadores | — | Chrome verificado; Firefox y Edge pendientes | Parcial |
+| **RNF-06** | Mantenibilidad y suite automatizada | — | 49 pruebas, cobertura 90%, arquitectura por capas | Cumple |
+| **RNF-07** | Despliegue local nativo | — | XAMPP MariaDB 10.4.32 + Flask + Vite | Cumple |
+| **RNF-08** | Restricciones de integridad | CP-03, CP-07 | Validaciones de servicio y `CHECK` en el esquema | Cumple |
 
 ---
 
@@ -163,16 +209,45 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 Las pruebas están automatizadas con el framework **pytest** de Python:
 
 ```powershell
-# 1. Asegurar entorno virtual activo
+# 1. Asegurar entorno virtual activo (opcional si ya está activo)
 cd src/backend
 .\venv\Scripts\Activate.ps1
 
-# 2. Ejecutar la suite completa con reporte en consola
-pytest ../../tests/backend -v
+# 2. Ejecutar la suite completa desde la raíz del repositorio
+cd ../..
+python -m pytest -q
 
 # 3. Ejecutar con reporte de cobertura de código
-pytest ../../tests/backend --cov=src/backend -v
+python -m pytest --cov=src/backend --cov-report=term-missing -q
 ```
+
+### 7.1. Distribución de la suite
+
+| Archivo | Pruebas | Cobertura funcional |
+| :--- | :---: | :--- |
+| `tests/backend/test_auth.py` | 3 | Login exitoso, contraseña incorrecta y usuario inexistente. |
+| `tests/backend/test_auth_roles.py` | 6 | Token ausente/inválido, lectura autorizada y escrituras rechazadas por rol. |
+| `tests/backend/test_productos.py` | 7 | Listado, búsqueda, creación, stock obligatorio, duplicados, precios límite y desactivación. |
+| `tests/backend/test_inventario_s1.py` | 5 | Alertas, ajustes, stock negativo, venta atómica y anti-sobreventa. |
+| `tests/backend/test_api_extra.py` | 20 | Health, errores HTTP, categorías, actualización de producto, historial y detalle de ventas. |
+| `tests/backend/test_usuarios.py` | 8 | Alta, roles, correo único, suspensión, revocación de sesión y restricción a `ADMIN`. |
+| **Total** | **49** | **Cobertura total: 90%.** |
+
+La suite usa una conexión MySQL simulada para ser determinista. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el descuento de stock, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MySQL/MariaDB real queda como mejora para la entrega final.
+
+### 7.2. Verificación manual del frontend
+
+| Escenario | Resultado esperado | Estado |
+| :--- | :--- | :---: |
+| Compilación de producción | `npm run build` genera `dist/` sin errores. | Aprobado |
+| Inicio de sesión | El usuario accede al panel con su nombre y rol. | Aprobado |
+| Navegación | Las rutas de productos, inventario y ventas cargan sin errores de consola. | Aprobado |
+| Roles | `VENDEDOR` no ve acciones de administración ni la ruta `/usuarios`; `ADMIN` sí. | Aprobado |
+| Catálogo | Búsqueda, filtro, creación, edición y desactivación funcionan contra la API. | Aprobado |
+| Inventario | El ajuste de stock actualiza la tabla y muestra el mensaje de éxito. | Aprobado |
+| Venta | El carrito calcula el total, descuenta stock y muestra la factura. | Aprobado |
+| Usuarios | `ADMIN` crea, edita el rol, suspende y reactiva un colaborador; el suspendido no puede ingresar. | Aprobado |
+| Responsive | El menú lateral se convierte en panel desplegable en móvil. | Aprobado |
 
 ---
 

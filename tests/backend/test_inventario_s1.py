@@ -75,7 +75,7 @@ def test_bloqueo_sobreventa_stock_insuficiente(client):
     """
     CP-07 / RF-07: Bloqueo de venta si la cantidad supera las existencias (Anti-Sobrevanta)
     """
-    # El producto 3 tiene 6 unidades; intentamos vender 10
+    # El producto 3 tiene 8 unidades; intentamos vender 10
     venta_invalida = {
         "usuario_id": 2,
         "items": [
@@ -87,7 +87,7 @@ def test_bloqueo_sobreventa_stock_insuficiente(client):
     data = response.get_json()
     assert "insuficiente" in data["error"].lower()
 
-    # Comprobar que el inventario se mantuvo intacto en 6
+    # Comprobar que el inventario se mantuvo intacto en 8
     res_prod = client.get("/api/v1/productos/3")
-    assert res_prod.get_json()["stock_actual"] == 6
+    assert res_prod.get_json()["stock_actual"] == 8
 

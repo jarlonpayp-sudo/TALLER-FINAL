@@ -1,3 +1,4 @@
+import copy
 import os
 import sys
 import pytest
@@ -7,6 +8,7 @@ import pymysql
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/backend")))
 
 from app import create_app
+from auth_utils import create_token
 
 class FakeMySQLCursor:
     def __init__(self, db_state):
@@ -25,6 +27,141 @@ class FakeMySQLCursor:
             user = next((u for u in self.db["usuarios"] if u["email"] == email), None)
             self._last_result = user
             self.rowcount = 1 if user else 0
+
+        # SELECT usuarios (administración de colaboradores)
+        elif q.startswith("SELECT u.id, u.nombre, u.email, u.rol_id, u.activo"):
+            roles = {r["id"]: r["nombre"] for r in self.db["roles"]}
+            usuarios = []
+            for u in self.db["usuarios"]:
+                item = dict(u)
+                item.pop("password_hash", None)
+                item["rol"] = roles.get(u["rol_id"], "SIN ROL")
+                usuarios.append(item)
+            if "WHERE u.id = %s" in q:
+                usuario_id = params[0]
+                self._last_result = next(
+                    (u for u in usuarios if u["id"] == usuario_id), None
+                )
+            else:
+                self._last_result = sorted(usuarios, key=lambda u: u["nombre"])
+            self.rowcount = 1 if self._last_result else 0
+
+        # SELECT roles (formulario de colaboradores)
+        elif q.startswith("SELECT id, nombre, descripcion") and "FROM roles" in q:
+            self._last_result = [dict(r) for r in self.db["roles"]]
+            self.rowcount = len(self._last_result)
+
+        # SELECT categorias (formulario de repuestos)
+        elif q.startswith("SELECT id, nombre, descripcion") and "FROM categorias" in q:
+            self._last_result = [dict(c) for c in self.db["categorias"]]
+            self.rowcount = len(self._last_result)
+
+        # Verificar rol de usuario
+        elif q.startswith("SELECT id FROM roles WHERE id = %s"):
+            rol_id = params[0]
+            rol = next((r for r in self.db["roles"] if r["id"] == rol_id), None)
+            self._last_result = {"id": rol["id"]} if rol else None
+            self.rowcount = 1 if rol else 0
+
+        # Verificar existencia de usuario
+        elif q.startswith("SELECT id FROM usuarios WHERE id = %s"):
+            usuario_id = params[0]
+            usuario = next(
+                (u for u in self.db["usuarios"] if u["id"] == usuario_id), None
+            )
+            self._last_result = {"id": usuario["id"]} if usuario else None
+            self.rowcount = 1 if usuario else 0
+
+        # Verificar estado activo, rol actual y rol_id del usuario para la sesión
+        elif q.startswith("SELECT u.activo, u.rol_id, r.nombre AS rol"):
+            usuario_id = params[0]
+            roles = {r["id"]: r["nombre"] for r in self.db["roles"]}
+            usuario = next(
+                (u for u in self.db["usuarios"] if u["id"] == usuario_id), None
+            )
+            self._last_result = (
+                {
+                    "activo": usuario["activo"],
+                    "rol_id": usuario["rol_id"],
+                    "rol": roles.get(usuario["rol_id"], "SIN ROL"),
+                }
+                if usuario
+                else None
+            )
+            self.rowcount = 1 if usuario else 0
+
+        # Verificar correo único de usuario
+        elif q.startswith("SELECT id FROM usuarios WHERE email = %s"):
+            email = params[0]
+            usuarios = [
+                u for u in self.db["usuarios"]
+                if u["email"].lower() == email.lower()
+            ]
+            if "AND id <> %s" in q and len(params) > 1:
+                usuarios = [u for u in usuarios if u["id"] != params[1]]
+            usuario = usuarios[0] if usuarios else None
+            self._last_result = {"id": usuario["id"]} if usuario else None
+            self.rowcount = 1 if usuario else 0
+
+        # INSERT usuarios
+        elif q.startswith("INSERT INTO usuarios"):
+            nombre, email, password_hash, rol_id, activo = params
+            nuevo_id = max([u["id"] for u in self.db["usuarios"]], default=0) + 1
+            self.db["usuarios"].append({
+                "id": nuevo_id,
+                "rol_id": rol_id,
+                "rol": next(
+                    (r["nombre"] for r in self.db["roles"] if r["id"] == rol_id),
+                    "SIN ROL",
+                ),
+                "nombre": nombre,
+                "email": email,
+                "password_hash": password_hash,
+                "activo": activo,
+            })
+            self.lastrowid = nuevo_id
+            self.rowcount = 1
+
+        # UPDATE usuarios con contraseña
+        elif q.startswith("UPDATE usuarios") and "password_hash = %s" in q:
+            nombre, email, rol_id, activo, password_hash, usuario_id = params
+            usuario = next(
+                (u for u in self.db["usuarios"] if u["id"] == usuario_id), None
+            )
+            if usuario:
+                usuario.update({
+                    "nombre": nombre,
+                    "email": email,
+                    "rol_id": rol_id,
+                    "activo": activo,
+                    "password_hash": password_hash,
+                })
+                self.rowcount = 1
+
+        # UPDATE usuarios sin contraseña
+        elif q.startswith("UPDATE usuarios") and "SET nombre = %s" in q:
+            nombre, email, rol_id, activo, usuario_id = params
+            usuario = next(
+                (u for u in self.db["usuarios"] if u["id"] == usuario_id), None
+            )
+            if usuario:
+                usuario.update({
+                    "nombre": nombre,
+                    "email": email,
+                    "rol_id": rol_id,
+                    "activo": activo,
+                })
+                self.rowcount = 1
+
+        # Suspender usuario
+        elif q.startswith("UPDATE usuarios SET activo = 0 WHERE id = %s"):
+            usuario_id = params[0]
+            usuario = next(
+                (u for u in self.db["usuarios"] if u["id"] == usuario_id), None
+            )
+            if usuario:
+                usuario["activo"] = 0
+                self.rowcount = 1
 
         # SELECT repuestos (Listar / Buscar)
         elif q.startswith("SELECT r.*, c.nombre as categoria_nombre FROM repuestos r"):
@@ -71,6 +208,13 @@ class FakeMySQLCursor:
             self._last_result = prod
             self.rowcount = 1 if prod else 0
 
+        # Verificar existencia de repuesto para actualización
+        elif q.startswith("SELECT id FROM repuestos WHERE id = %s"):
+            rep_id = params[0]
+            prod = next((r for r in self.db["repuestos"] if r["id"] == rep_id), None)
+            self._last_result = {"id": prod["id"]} if prod else None
+            self.rowcount = 1 if prod else 0
+
         # Check unicidad código
         elif q.startswith("SELECT id FROM repuestos WHERE codigo_referencia = %s"):
             codigo = params[0]
@@ -99,6 +243,23 @@ class FakeMySQLCursor:
             self.lastrowid = nuevo_id
             self.rowcount = 1
 
+        # UPDATE datos de catálogo del repuesto
+        elif q.startswith("UPDATE repuestos") and "SET categoria_id = %s" in q:
+            cat_id, cod, oem, nom, marca, p_comp, p_vent, s_min, rep_id = params
+            prod = next((r for r in self.db["repuestos"] if r["id"] == rep_id), None)
+            if prod:
+                prod.update({
+                    "categoria_id": cat_id,
+                    "codigo_referencia": cod,
+                    "codigo_oem": oem,
+                    "nombre": nom,
+                    "marca_moto": marca,
+                    "precio_compra": p_comp,
+                    "precio_venta": p_vent,
+                    "stock_minimo": s_min
+                })
+                self.rowcount = 1
+
         # UPDATE stock repuestos
         elif q.startswith("UPDATE repuestos SET stock_actual = %s WHERE id = %s"):
             nuevo_stock, rep_id = params
@@ -114,6 +275,52 @@ class FakeMySQLCursor:
             if prod:
                 prod["activo"] = 0
                 self.rowcount = 1
+
+        # SELECT listado de ventas
+        elif q.startswith("SELECT v.id,") and "FROM ventas v" in q:
+            ventas = []
+            for venta in sorted(
+                self.db["ventas"],
+                key=lambda v: (v.get("created_at", ""), v["id"]),
+                reverse=True
+            ):
+                usuario = next(
+                    (u for u in self.db["usuarios"] if u["id"] == venta["usuario_id"]),
+                    None
+                )
+                item = dict(venta)
+                item["vendedor_nombre"] = usuario["nombre"] if usuario else "Desconocido"
+                ventas.append(item)
+            self._last_result = ventas[:int(params[0])] if params else ventas
+            self.rowcount = len(self._last_result)
+
+        # SELECT venta con vendedor (consulta de venta)
+        elif q.startswith("SELECT v.*, u.nombre as vendedor_nombre FROM ventas v"):
+            venta_id = params[0]
+            venta = next((v for v in self.db["ventas"] if v["id"] == venta_id), None)
+            if venta:
+                usuario = next((u for u in self.db["usuarios"] if u["id"] == venta["usuario_id"]), None)
+                item = dict(venta)
+                item["vendedor_nombre"] = usuario["nombre"] if usuario else "Desconocido"
+                self._last_result = item
+            else:
+                self._last_result = None
+            self.rowcount = 1 if venta else 0
+
+        # SELECT detalle de venta
+        elif q.startswith("SELECT d.*, r.nombre, r.codigo_referencia FROM detalle_ventas d"):
+            venta_id = params[0]
+            rep_map = {r["id"]: r for r in self.db["repuestos"]}
+            detalles = []
+            for detalle in self.db["detalle_ventas"]:
+                if detalle["venta_id"] == venta_id:
+                    item = dict(detalle)
+                    repuesto = rep_map.get(detalle["repuesto_id"], {})
+                    item["nombre"] = repuesto.get("nombre", "Repuesto")
+                    item["codigo_referencia"] = repuesto.get("codigo_referencia", "")
+                    detalles.append(item)
+            self._last_result = detalles
+            self.rowcount = len(detalles)
 
         # INSERT ventas
         elif q.startswith("INSERT INTO ventas"):
@@ -174,15 +381,17 @@ class FakeMySQLConnection:
     def close(self):
         pass
 
-_shared_test_state = {
+_seed_test_state = {
     "roles": [
         {"id": 1, "nombre": "ADMIN"},
         {"id": 2, "nombre": "VENDEDOR"},
         {"id": 3, "nombre": "INVENTARIO"}
     ],
     "usuarios": [
-        {"id": 1, "rol_id": 1, "rol": "ADMIN", "nombre": "Alejandro Londoño", "email": "admin@allquality.com", "password_hash": "Admin123*", "activo": 1},
-        {"id": 2, "rol_id": 2, "rol": "VENDEDOR", "nombre": "Cristian Carabalí", "email": "vendedor@allquality.com", "password_hash": "Admin123*", "activo": 1}
+        {"id": 1, "rol_id": 1, "rol": "ADMIN", "nombre": "Alejandro Londoño", "email": "admin@allquality.com", "password_hash": "pbkdf2:sha256:1000000$SSDmAem1zvm5BJlR$ef3fd42b108d997c03970069576a7e675685ed71853f2984aa81f65cdeeac4b1", "activo": 1},
+        {"id": 2, "rol_id": 2, "rol": "VENDEDOR", "nombre": "Cristian Carabalí", "email": "vendedor@allquality.com", "password_hash": "pbkdf2:sha256:1000000$GL9QXf8uwKPxWPhM$6ef23813eba1d98c5a09f14d65c0b557ec1133582846a621e5babec3047e271c", "activo": 1},
+        {"id": 3, "rol_id": 3, "rol": "INVENTARIO", "nombre": "Steven Rendón", "email": "bodega@allquality.com", "password_hash": "pbkdf2:sha256:1000000$Y83sSRiXGebBJGgk$bf15d53bcc456f364e00b5f3bf8222008b2cb9e15fb1ee6e876bf2b5ffa98d51", "activo": 1},
+        {"id": 4, "rol_id": 3, "rol": "INVENTARIO", "nombre": "Usuario Inactivo", "email": "inactivo@allquality.com", "password_hash": "pbkdf2:sha256:1000000$Y83sSRiXGebBJGgk$bf15d53bcc456f364e00b5f3bf8222008b2cb9e15fb1ee6e876bf2b5ffa98d51", "activo": 0}
     ],
     "categorias": [
         {"id": 1, "nombre": "Frenos"},
@@ -206,8 +415,12 @@ def mock_mysql_connection(monkeypatch):
     """
     Emula la conexión de PyMySQL en memoria para pruebas rápidas y deterministas
     sin necesidad de requerir el servicio MySQL encendido durante la suite.
+
+    Se entrega una copia profunda del estado semilla a cada prueba para que los
+    casos sean independientes y no dependan del orden de ejecución.
     """
-    monkeypatch.setattr(pymysql, "connect", lambda *args, **kwargs: FakeMySQLConnection(_shared_test_state))
+    db_state = copy.deepcopy(_seed_test_state)
+    monkeypatch.setattr(pymysql, "connect", lambda *args, **kwargs: FakeMySQLConnection(db_state))
 
 @pytest.fixture
 def app():
@@ -216,4 +429,9 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    """Cliente autenticado como ADMIN para las pruebas del núcleo funcional."""
+    test_client = app.test_client()
+    with app.app_context():
+        token = create_token({"id": 1, "rol": "ADMIN"})
+    test_client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    return test_client
