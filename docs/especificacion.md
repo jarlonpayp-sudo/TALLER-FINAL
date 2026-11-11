@@ -6,7 +6,9 @@
 **Periodo Académico:** 2026-2  
 **Docente Titular:** Ing. Felipe Gutiérrez Isaza  
 **Responsable de Documentación:** Santiago Calvo  
-**Hito de Entrega:** Seguimiento 1 (`entrega-s1`)  
+**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)
+
+> El estado de implementación y la evidencia de cada requisito se documentan en [Verificación de requisitos — Entrega 2](verificacion-requisitos.md).
 
 ---
 
