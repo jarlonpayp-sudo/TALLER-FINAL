@@ -6,11 +6,16 @@ def test_alertas_stock_minimo(client):
     assert response.status_code == 200
     data = response.get_json()
     assert "productos_en_alerta" in data
-    assert data["total_alertas"] >= 1
-    
-    # El producto 2 (Bandas GN125) tiene stock 2 y stock_minimo 4, debe estar en alerta
-    ids_en_alerta = [p["id"] for p in data["productos_en_alerta"]]
-    assert 2 in ids_en_alerta
+    assert data["total_alertas"] == 4
+
+    alertas = {p["id"]: p for p in data["productos_en_alerta"]}
+    assert set(alertas) == {2, 5, 6, 15}
+
+    # IDs 2 y 5: stock bajo; IDs 6 y 15: agotados
+    assert alertas[2]["nivel_alerta"] == "STOCK_BAJO"
+    assert alertas[5]["nivel_alerta"] == "STOCK_BAJO"
+    assert alertas[6]["nivel_alerta"] == "AGOTADO"
+    assert alertas[15]["nivel_alerta"] == "AGOTADO"
 
 def test_ajuste_inventario_valido(client):
     """

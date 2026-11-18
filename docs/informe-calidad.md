@@ -6,7 +6,7 @@
 **Periodo Académico:** 2026-2  
 **Docente Titular:** Ing. Felipe Gutiérrez Isaza  
 **Responsable de Calidad:** Steven Rendón  
-**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)  
+**Versión evaluada:** Entrega final — 18 de noviembre de 2026
 
 ---
 
@@ -14,7 +14,7 @@
 
 El presente informe consolida el marco de evaluación de calidad de software aplicado al sistema **AllQuality**, fundamentado en el estándar internacional **ISO/IEC 25010** (Modelo de Calidad del Producto) y las directrices de mantenimiento de **ISO/IEC 14764**.
 
-Este documento establece las métricas de calidad objetivas, los umbrales de aceptación y la bitácora de defectos técnicos detectados durante la construcción y verificación del software. El alcance evaluado corresponde a la **Entrega 2**; los requisitos de compras, anulación de ventas, reportes y respaldo integrado se reservan para la entrega final y se detallan en la [verificación de requisitos](verificacion-requisitos.md).
+Este documento establece las métricas de calidad objetivas, los umbrales de aceptación y la bitácora de defectos técnicos detectados durante la construcción y verificación del software. El alcance evaluado corresponde a la **entrega final**; los requisitos de compras, anulación de ventas, reportes y respaldo integrado **no forman parte del alcance implementado** y se documentan como backlog en la [verificación de requisitos](verificacion-requisitos.md).
 
 ---
 
@@ -22,7 +22,7 @@ Este documento establece las métricas de calidad objetivas, los umbrales de ace
 
 | Característica ISO/IEC 25010 | Métrica Evaluada | Meta de Calidad | Método de Verificación | Resultado |
 | :--- | :--- | :---: | :--- | :---: |
-| **1. Adecuación Funcional** | Porcentaje de pruebas automatizadas aprobadas | 100% | Ejecución automatizada con `pytest` | **100% de pruebas aprobadas (49/49); cobertura 90%** |
+| **1. Adecuación Funcional** | Porcentaje de pruebas automatizadas aprobadas | 100% | Ejecución automatizada con `pytest` | **100% de pruebas aprobadas (49/49); cobertura 90%; catálogo de prueba con 25 productos (24 activos)** |
 | **2. Eficiencia de Desempeño** | Latencia en consultas de búsqueda y catálogo | $\le 1.5\text{ s}$ | Pruebas locales; benchmark formal pendiente | **Parcial: respuestas locales rápidas, sin benchmark con 1.000 repuestos** |
 | **3. Compatibilidad** | Intercambio de datos JSON y compatibilidad SQL | 100% | API REST estandarizada y cliente React conectado | **Conforme (React + API JSON + MariaDB 10.4.32)** |
 | **4. Capacidad de Interacción** | Claridad en códigos de error y respuestas HTTP | Códigos 200, 201, 400, 401, 403, 404, 409, 422 | Manejo centralizado de excepciones y mensajes en la interfaz | **Conforme (API + interfaz React)** |
@@ -31,7 +31,7 @@ Este documento establece las métricas de calidad objetivas, los umbrales de ace
 | **7. Mantenibilidad** | Modularidad de código y desacoplamiento | Capas separadas | Arquitectura en Rutas, Servicios y Base de datos | **Conforme (49 pruebas, 90% de cobertura)** |
 | **8. Flexibilidad / Portabilidad** | Ejecución nativa sin dependencias de virtualización | Cero Docker | Python 3.11.9 + MariaDB (InnoDB) + Vite | **Conforme** |
 
-> **Limitación de la medición:** la suite usa una conexión MySQL simulada (`FakeMySQLConnection`), por lo que los resultados de concurrencia y rendimiento no sustituyen una prueba contra el motor real. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MariaDB/MySQL real queda para la entrega final.
+> **Limitación de la medición:** la suite usa una conexión MySQL simulada (`FakeMySQLConnection`), por lo que los resultados de concurrencia y rendimiento no sustituyen una prueba contra el motor real. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MariaDB/MySQL real queda como mejora prevista (backlog).
 
 ---
 
@@ -76,7 +76,7 @@ Durante las sesiones de inspección de código y pruebas tempranas, el responsab
 * **Mantenimiento Correctivo:** Corrección de validaciones de límites numéricos (precios, stock) y manejo centralizado de errores HTTP 400, 409 y 422.
 * **Mantenimiento Preventivo:** Estandarización de tipos numéricos (`float`/`int`) y exclusión estricta de archivos temporales mediante `.gitignore`.
 * **Mantenimiento Perfectivo:** Desacoplamiento de la lógica de negocio en clases de servicio (`ProductoService`, `CategoriaService`, `InventarioService`, `UsuarioService`, `VentaService`), incorporación de un cliente React 18 + Vite con diseño blanco y negro, autenticación firmada y administración de usuarios.
-* **Mantenimiento Evolutivo (entrega final):** compras/recepción de mercancía, anulación de ventas, reportes comerciales, respaldo/restauración integrados, pruebas de concurrencia e integración automatizada con MariaDB.
+* **Backlog evolutivo (no implementado en esta entrega):** compras/recepción de mercancía, anulación de ventas, reportes comerciales, respaldo/restauración integrados, pruebas de concurrencia e integración automatizada con MariaDB.
 
 ---
 

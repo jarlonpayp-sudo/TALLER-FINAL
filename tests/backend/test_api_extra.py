@@ -41,7 +41,9 @@ def test_listar_con_categoria_invalida(client):
     """Un parámetro de categoría no numérico no debe romper el listado."""
     response = client.get("/api/v1/productos?cat=abc")
     assert response.status_code == 200
-    assert "productos" in response.get_json()
+    data = response.get_json()
+    assert data["total"] == 24
+    assert "productos" in data
 
 
 def test_login_sin_password(client):
@@ -133,12 +135,13 @@ def test_consultar_venta_inexistente(client):
 
 
 def test_listar_categorias(client):
-    """El frontend necesita las categorías para el formulario de repuestos."""
+    """El frontend necesita las cinco categorías del catálogo ampliado."""
     response = client.get("/api/v1/categorias")
     assert response.status_code == 200
     data = response.get_json()
-    assert data["total"] >= 4
-    assert any(c["nombre"] == "Frenos" for c in data["categorias"])
+    assert data["total"] == 5
+    nombres = {c["nombre"] for c in data["categorias"]}
+    assert {"Frenos", "Accesorios"}.issubset(nombres)
 
 
 def test_listar_ventas(client):

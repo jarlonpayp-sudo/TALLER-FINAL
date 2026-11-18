@@ -1,22 +1,47 @@
 def test_listar_productos(client):
     """
-    CP-04: Listado general de repuestos activos
+    CP-04: Listado general de repuestos activos del catálogo ampliado.
     """
     response = client.get("/api/v1/productos")
     assert response.status_code == 200
     data = response.get_json()
     assert "productos" in data
-    assert data["total"] >= 4
+    assert data["total"] == 24
+    assert len(data["productos"]) == 24
+
+    ids = {p["id"] for p in data["productos"]}
+    assert 18 not in ids  # Producto inactivo del catálogo
+    assert {1, 5, 6, 15, 25}.issubset(ids)
+
+    conteo_categorias = {}
+    for producto in data["productos"]:
+        categoria = producto["categoria_nombre"]
+        conteo_categorias[categoria] = conteo_categorias.get(categoria, 0) + 1
+
+    assert conteo_categorias == {
+        "Frenos": 6,
+        "Motor y Transmisión": 5,
+        "Eléctrico": 5,
+        "Lubricantes y Químicos": 4,
+        "Accesorios": 4,
+    }
 
 def test_buscar_producto_por_nombre_o_oem(client):
     """
-    CP-04: Búsqueda multicriterio con texto parcial
+    CP-04: Búsqueda multicriterio con texto parcial, por nombre y por OEM.
     """
-    response = client.get("/api/v1/productos?q=Yamaha")
-    assert response.status_code == 200
-    data = response.get_json()
-    assert len(data["productos"]) >= 1
-    assert "Yamaha" in data["productos"][0]["nombre"]
+    response_nombre = client.get("/api/v1/productos?q=Yamaha")
+    assert response_nombre.status_code == 200
+    data_nombre = response_nombre.get_json()
+    assert data_nombre["total"] == 2
+    assert {1, 14}.issubset({p["id"] for p in data_nombre["productos"]})
+    assert all("Yamaha" in p["nombre"] for p in data_nombre["productos"])
+
+    response_oem = client.get("/api/v1/productos?q=OEM-36DK0013")
+    assert response_oem.status_code == 200
+    data_oem = response_oem.get_json()
+    assert data_oem["total"] == 1
+    assert data_oem["productos"][0]["id"] == 6
 
 def test_crear_repuesto_valido(client):
     """

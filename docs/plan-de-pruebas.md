@@ -6,7 +6,7 @@
 **Periodo Académico:** 2026-2  
 **Docente Titular:** Ing. Felipe Gutiérrez Isaza  
 **Responsable de Pruebas (QA Lead):** Cristian Carabalí  
-**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)  
+**Versión evaluada:** Entrega final — 18 de noviembre de 2026
 
 ---
 
@@ -14,7 +14,7 @@
 
 El presente documento constituye el **Plan Maestro de Pruebas** para el sistema comercial **AllQuality**, estructurado bajo los lineamientos del estándar internacional **ISO/IEC/IEEE 29119** (Software Testing) y alineado a los criterios de calidad de la norma **ISO/IEC 25010**.
 
-El propósito fundamental de este plan es guiar, diseñar, parametrizar y automatizar las actividades de verificación y validación del software. La versión actual —correspondiente a la **Entrega 2**— incorpora una suite de **49 pruebas**, la medición de cobertura, las validaciones transaccionales de inventario y ventas, el control de permisos por rol y la verificación de la integración con el cliente React.
+El propósito fundamental de este plan es guiar, diseñar, parametrizar y automatizar las actividades de verificación y validación del software. La versión actual —correspondiente a la **entrega final**— incorpora una suite de **49 pruebas**, una cobertura total del **90%**, validaciones transaccionales de inventario y ventas, control de permisos por rol, verificación del cliente React y un catálogo de prueba de **25 productos** distribuidos en 5 categorías.
 
 ---
 
@@ -27,7 +27,8 @@ El propósito fundamental de este plan es guiar, diseñar, parametrizar y automa
 4. **Módulo de Ventas:** Registro transaccional, historial, consulta de factura y descuento atómico de existencias.
 5. **Módulo de Administración de Usuarios:** Alta de colaboradores, cambio de rol, suspensión y reactivación por parte del `ADMIN`.
 6. **Validaciones de Integridad de Datos:** Reglas de negocio que prohíben precios $\le 0$, existencias $< 0$ y códigos duplicados.
-6. **Cliente web React:** Navegación, formularios, búsqueda, carrito, mensajes de error y diseño responsivo.
+7. **Catálogo de prueba ampliado:** 25 productos (24 activos y 1 inactivo), 5 categorías, 2 productos con stock bajo y 2 agotados.
+8. **Cliente web React:** Navegación, formularios, búsqueda, carrito, mensajes de error y diseño responsivo.
 
 ---
 
@@ -106,7 +107,7 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 
 ### CP-02: Creación Exitosa de Repuesto en Catálogo
 * **Requisito Asociado:** RF-02 | **Tipo:** Funcional / Caja Negra
-* **Entradas:** Código: `"PAST-FR-FZ16"`, Nombre: `"Pastillas de Freno Delanteras Yamaha FZ16"`, Categoría ID: 1, Precio: $35000.00, Stock: 15, Stock Mínimo: 3.
+* **Entradas:** Código: `"DISC-FR-NMAX155"`, Nombre: `"Disco de Freno Delantero NMAX 155"`, Categoría ID: 1, Precio: $78000.00, Stock: 10, Stock Mínimo: 2.
 * **Resultado Esperado:** Código HTTP `201 Created`, producto persistido con ID autogenerado y existencias verificables.
 
 ### CP-03: Rechazo de Repuesto con Código Duplicado o Precios Inválidos
@@ -125,9 +126,9 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 
 ### CP-05: Verificación de Alertas de Stock Bajo
 * **Requisito Asociado:** RF-11 | **Tipo:** Lógica de Dominio / BVA
-* **Precondición:** Producto A con `stock = 3`, `stock_minimo = 5`; Producto B con `stock = 10`, `stock_minimo = 5`.
+* **Precondición:** El fixture de la suite contiene dos productos con stock bajo (IDs 2 y 5) y dos agotados (IDs 6 y 15); un producto con stock suficiente, como el ID 1, no debe aparecer.
 * **Petición:** `GET /api/v1/inventario/alertas`
-* **Resultado Esperado:** La respuesta incluye al Producto A con bandera `alerta_stock = true` y omite al Producto B.
+* **Resultado Esperado:** La respuesta contiene exactamente cuatro alertas: IDs 2 y 5 como `STOCK_BAJO`, e IDs 6 y 15 como `AGOTADO`.
 
 ### CP-06: Consulta y Actualización Controlada de Existencias
 * **Requisito Asociado:** RF-09 (ajuste manual), RF-18 | **Tipo:** Integración
@@ -173,7 +174,7 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 
 ## 6. Matriz de Trazabilidad de Requisitos (RTM)
 
-| Código | Requisito | Caso | Evidencia automatizada / manual | Estado Entrega 2 |
+| Código | Requisito | Caso | Evidencia automatizada / manual | Estado entrega final |
 | :---: | :--- | :---: | :--- | :---: |
 | **RF-01** | Autenticación y sesión | CP-01, CP-13 | `test_auth.py`; `test_auth_roles.py`; verificación manual de login | Cumple |
 | **RF-02** | Crear y administrar catálogo | CP-02, CP-03, CP-09 | `test_productos.py`; `test_api_extra.py` | Cumple |
@@ -182,15 +183,15 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 | **RF-05** | Registrar venta | CP-10 | `test_inventario_s1.py`, `test_api_extra.py`, venta manual en MariaDB | Cumple |
 | **RF-06** | Actualización atómica de inventario | CP-07, CP-10 | `test_venta_descuenta_inventario_atomicamente`; rollback multiítem manual | Cumple |
 | **RF-07** | Anti-sobreventa | CP-07 | `test_bloqueo_sobreventa_stock_insuficiente`; verificación manual | Cumple |
-| **RF-08** | Compras a proveedores | — | Sin módulo de compras | Pendiente entrega final |
+| **RF-08** | Compras a proveedores | — | Sin módulo de compras | No implementado (backlog) |
 | **RF-09** | Entrada y confirmación de mercancía | CP-06 | Ajuste manual auditado; no existe recepción de compras | Parcial |
-| **RF-10** | Anulación de ventas | — | Sin endpoint de anulación | Pendiente entrega final |
+| **RF-10** | Anulación de ventas | — | Sin endpoint de anulación | No implementado (backlog) |
 | **RF-11** | Alertas de stock bajo | CP-05 | `test_inventario_s1.py` | Cumple |
 | **RF-12** | Administrar usuarios y roles | CP-12 | `test_usuarios.py`; verificación con Playwright | Cumple |
 | **RF-13** | Control de permisos por rol | CP-11 | `test_auth_roles.py`; verificación con Playwright | Cumple |
-| **RF-14** | Copias de seguridad | — | Solo disponible el procedimiento manual de `mysqldump` | Pendiente entrega final |
-| **RF-15** | Restauración de datos | — | Sin flujo integrado | Pendiente entrega final |
-| **RF-16** | Reportes comerciales | — | Sin reportes por periodo ni rotación | Pendiente entrega final |
+| **RF-14** | Copias de seguridad | — | Solo disponible el procedimiento manual de `mysqldump` | No implementado (backlog) |
+| **RF-15** | Restauración de datos | — | Sin flujo integrado | No implementado (backlog) |
+| **RF-16** | Reportes comerciales | — | Sin reportes por periodo ni rotación | No implementado (backlog) |
 | **RF-17** | Cálculo exacto de totales | CP-02, CP-10 | Columnas `DECIMAL(12,2)` verificadas en MariaDB | Cumple |
 | **RF-18** | Historial de auditoría | CP-06, CP-07, CP-10 | Registros de venta y ajuste verificados en MariaDB | Cumple |
 | **RNF-01** | Rendimiento p95 ≤ 1.5 s | — | Benchmark formal pendiente | Parcial |
@@ -198,7 +199,7 @@ El análisis de frontera se concentra en los puntos donde los sistemas frecuente
 | **RNF-03** | Usabilidad y flujo de venta | CP-10 | Verificación manual en Chrome | Cumple |
 | **RNF-04** | ACID y cero sobreventas | CP-07 | `FOR UPDATE`, `rollback`; concurrencia real pendiente | Parcial |
 | **RNF-05** | Compatibilidad de navegadores | — | Chrome verificado; Firefox y Edge pendientes | Parcial |
-| **RNF-06** | Mantenibilidad y suite automatizada | — | 49 pruebas, cobertura 90%, arquitectura por capas | Cumple |
+| **RNF-06** | Mantenibilidad y suite automatizada | — | 49 pruebas, cobertura 90%, catálogo de 25 productos y arquitectura por capas | Cumple |
 | **RNF-07** | Despliegue local nativo | — | XAMPP MariaDB 10.4.32 + Flask + Vite | Cumple |
 | **RNF-08** | Restricciones de integridad | CP-03, CP-07 | Validaciones de servicio y `CHECK` en el esquema | Cumple |
 
@@ -227,13 +228,13 @@ python -m pytest --cov=src/backend --cov-report=term-missing -q
 | :--- | :---: | :--- |
 | `tests/backend/test_auth.py` | 3 | Login exitoso, contraseña incorrecta y usuario inexistente. |
 | `tests/backend/test_auth_roles.py` | 6 | Token ausente/inválido, lectura autorizada y escrituras rechazadas por rol. |
-| `tests/backend/test_productos.py` | 7 | Listado, búsqueda, creación, stock obligatorio, duplicados, precios límite y desactivación. |
-| `tests/backend/test_inventario_s1.py` | 5 | Alertas, ajustes, stock negativo, venta atómica y anti-sobreventa. |
-| `tests/backend/test_api_extra.py` | 20 | Health, errores HTTP, categorías, actualización de producto, historial y detalle de ventas. |
+| `tests/backend/test_productos.py` | 7 | Listado y búsqueda del catálogo de 25 productos, creación, stock obligatorio, duplicados, precios límite y desactivación. |
+| `tests/backend/test_inventario_s1.py` | 5 | Alertas del catálogo ampliado, ajustes, stock negativo, venta atómica y anti-sobreventa. |
+| `tests/backend/test_api_extra.py` | 20 | Health, errores HTTP, 5 categorías, actualización de producto, historial y detalle de ventas. |
 | `tests/backend/test_usuarios.py` | 8 | Alta, roles, correo único, suspensión, revocación de sesión y restricción a `ADMIN`. |
-| **Total** | **49** | **Cobertura total: 90%.** |
+| **Total** | **49** | **Cobertura total: 90%; catálogo de prueba: 25 productos (24 activos).** |
 
-La suite usa una conexión MySQL simulada para ser determinista. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el descuento de stock, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MySQL/MariaDB real queda como mejora para la entrega final.
+La suite usa una conexión MySQL simulada para ser determinista. La aplicación se validó manualmente contra **MariaDB 10.4.32 de XAMPP**, incluida una venta real, el descuento de stock, el rollback multiítem, la auditoría y la administración de usuarios; el frontend se compiló con Vite y se recorrió con Playwright. La prueba automatizada de integración contra MySQL/MariaDB real queda como mejora prevista (backlog), fuera del alcance automatizado de esta entrega.
 
 ### 7.2. Verificación manual del frontend
 

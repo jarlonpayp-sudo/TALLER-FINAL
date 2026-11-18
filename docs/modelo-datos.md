@@ -3,7 +3,8 @@
 **Proyecto:** Sistema de Gestión Comercial de Repuestos para Motocicletas  
 **Base de datos:** `allquality_db`  
 **Motor:** MariaDB 10.4.32 (XAMPP) — InnoDB; compatible con MySQL 8.0+  
-**Versión evaluada:** Entrega 2 — Aplicación web funcional (backend Flask + frontend React)  
+**Versión evaluada:** Entrega final — 18 de noviembre de 2026
+
 **Responsable de documentación:** Santiago Calvo
 
 ---
@@ -32,7 +33,7 @@ El diagrama entidad-relación completo está en [Diagramas — Base de datos](di
 | 1 | `roles` | Catálogo de roles del sistema. | 3 |
 | 2 | `usuarios` | Cuentas de acceso y rol asignado. | 3 |
 | 3 | `categorias` | Clasificación comercial de repuestos. | 5 |
-| 4 | `repuestos` | Catálogo central y existencias. | 5 |
+| 4 | `repuestos` | Catálogo central y existencias. | 25 |
 | 5 | `ventas` | Cabecera de facturas. | 0 |
 | 6 | `detalle_ventas` | Líneas de cada factura. | 0 |
 | 7 | `auditoria_movimientos` | Kardex de entradas y salidas. | 0 |
@@ -125,7 +126,7 @@ Tabla central del inventario. Representa cada producto físico y su saldo actual
 - `categoria_id` referencia `categorias.id` con `ON UPDATE CASCADE`.
 - El borrado es lógico mediante `activo = 0`; no se elimina el registro.
 
-**Datos semilla:** cinco repuestos de ejemplo. Los productos con `stock_actual <= stock_minimo` aparecen automáticamente en las alertas.
+**Datos semilla:** 25 repuestos de ejemplo: 24 activos, 2 con stock bajo, 2 agotados y 1 inactivo. Los productos activos con `stock_actual <= stock_minimo` aparecen automáticamente en las alertas.
 
 ---
 
@@ -190,7 +191,7 @@ Kardex del inventario. Registra cada entrada o salida con el usuario, el saldo a
 
 **Invariante de negocio:** `stock_nuevo = stock_anterior + cantidad`. El servicio impide que `stock_nuevo` sea negativo.
 
-**Observación:** el tipo de movimiento es texto libre; para la entrega final se recomienda convertirlo en `ENUM` o agregar un `CHECK` con los valores permitidos.
+**Observación:** el tipo de movimiento es texto libre; como mejora futura se recomienda convertirlo en `ENUM` o agregar un `CHECK` con los valores permitidos.
 
 ---
 
@@ -258,8 +259,8 @@ El script `schema.sql` inserta datos de demostración con `INSERT IGNORE`:
 - **Roles:** ADMIN, VENDEDOR, INVENTARIO.
 - **Usuarios:** administrador, vendedor y bodega.
 - **Categorías:** Frenos, Motor y Transmisión, Eléctrico, Lubricantes y Químicos, Accesorios.
-- **Repuestos:** 5 productos de ejemplo con precios en pesos colombianos.
-- **Ventas y auditoría:** sin registros iniciales.
+- **Repuestos:** 25 productos de ejemplo con precios en pesos colombianos, distribuidos así: Frenos 6, Motor y Transmisión 5, Eléctrico 5, Lubricantes y Químicos 4 y Accesorios 5. El catálogo queda con 24 activos, 2 con stock bajo, 2 agotados y 1 inactivo.
+- **Ventas y auditoría:** sin registros iniciales en el script de creación; la instancia local de demostración contiene ventas y movimientos de prueba.
 
 Los usuarios semilla son de demostración. Para un entorno real se deben crear usuarios nuevos con contraseñas cifradas y eliminar los datos de ejemplo.
 
@@ -354,13 +355,13 @@ ORDER BY fecha;
 
 ---
 
-## 9. Extensiones recomendadas para la entrega final
+## 9. Extensiones recomendadas (backlog)
 
 - Agregar `ENUM` o `CHECK` a `ventas.estado` y `auditoria_movimientos.tipo_movimiento`.
 - Agregar un índice compuesto para búsquedas por `nombre`, `codigo_referencia` y `codigo_oem`.
 - Registrar el motivo de anulación en `ventas.notas` o en una columna específica.
 - Agregar una tabla de compras/proveedores si se implementa RF-08.
-- Agregar una tabla de usuarios o auditoría de accesos si se implementa administración de usuarios.
+- Agregar auditoría específica de accesos y cambios de permisos.
 - Evaluar `ON DELETE RESTRICT` explícito en las relaciones que no deben borrarse.
 
 ---

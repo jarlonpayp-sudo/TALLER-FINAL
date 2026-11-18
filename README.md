@@ -6,7 +6,7 @@
 
 **Repositorio:** <https://github.com/jarlonpayp-sudo/TALLER-FINAL>  
 **Tablero Trello:** [Proyecto Final AllQuality](https://trello.com/invite/b/6ae20964673dd65bcfef559f/ATTI90fd9b632977854e57ae366056873e0d6B0BC26B/proyecto-final)  
-**Última actualización:** 10 de noviembre de 2026
+**Entrega final:** 18 de noviembre de 2026
 
 ---
 
@@ -16,7 +16,7 @@
 | :--- | :--- |
 | [Especificación de requisitos](docs/especificacion.md) | Requisitos funcionales y no funcionales, priorización MoSCoW y criterios de aceptación BDD. |
 | [Plan de pruebas](docs/plan-de-pruebas.md) | Técnicas EP/BVA, casos CP-01 a CP-13, matriz de trazabilidad y automatización con `pytest`. |
-| [Verificación de requisitos](docs/verificacion-requisitos.md) | Matriz de cumplimiento RF/RNF, evidencia de pruebas y brechas pendientes. |
+| [Verificación de requisitos](docs/verificacion-requisitos.md) | Matriz de cumplimiento RF/RNF, evidencia de pruebas y backlog fuera del alcance. |
 | [Informe de calidad](docs/informe-calidad.md) | Evaluación ISO/IEC 25010, bitácora DEF-01 a DEF-05 y acciones de mantenimiento ISO/IEC 14764. |
 | [Diagramas](docs/diagramas.md) | Diagramas en imagen PNG y código Mermaid: modelo ER, arquitectura, navegación, roles, venta, inventario y despliegue. |
 | [Modelo de datos](docs/modelo-datos.md) | Diccionario completo de las 7 tablas, relaciones, restricciones y consultas de negocio. |
@@ -149,7 +149,7 @@ La base de datos `allquality_db` está compuesta por **7 tablas** en MySQL/InnoD
 | `repuestos` | Catálogo central: códigos, precios, stock actual y stock mínimo. |
 | `ventas` | Cabecera de cada factura: usuario, número, subtotal, IVA, total y estado. |
 | `detalle_ventas` | Líneas de la factura: repuesto, cantidad, precio histórico y subtotal. |
-| `auditoria_movimientos` | Kardex de entradas y salidas: la Entrega 2 registra ventas y ajustes; el esquema admite compra y anulación para la entrega final. |
+| `auditoria_movimientos` | Kardex de entradas y salidas: la entrega final registra ventas y ajustes; el esquema admite compra y anulación como mejora prevista. |
 
 ### 4.1. Reglas de integridad principales
 
@@ -168,7 +168,7 @@ El script `schema.sql` crea la base, las tablas y datos de demostración:
 - 3 roles: `ADMIN`, `VENDEDOR`, `INVENTARIO`.
 - 3 usuarios de ejemplo: `admin@allquality.com`, `vendedor@allquality.com` y `bodega@allquality.com`.
 - 5 categorías: Frenos, Motor y Transmisión, Eléctrico, Lubricantes y Químicos, Accesorios.
-- 5 repuestos de ejemplo, incluidos dos casos de alerta de stock.
+- 25 repuestos de ejemplo: 24 activos, 2 en stock bajo, 2 agotados y 1 inactivo.
 
 > Los usuarios y datos semilla son de demostración. No deben usarse como credenciales reales en producción.
 
@@ -489,9 +489,11 @@ La compilación de producción se verificó con `vite build` sin errores.
 
 ### 6.5. Vista previa
 
-| Panel principal | Nueva venta |
+| Panel principal | Catálogo |
 | :---: | :---: |
-| ![Panel principal](docs/capturas/panel-principal.png) | ![Nueva venta](docs/capturas/nueva-venta.png) |
+| ![Panel principal](docs/capturas/panel-principal.png) | ![Catálogo](docs/capturas/productos.png) |
+| **Inventario** | **Nueva venta** |
+| ![Inventario](docs/capturas/inventario.png) | ![Nueva venta](docs/capturas/nueva-venta.png) |
 
 ---
 
@@ -547,13 +549,15 @@ python -m pytest --cov=src/backend --cov-report=term-missing -q
 Cobertura total: 90%
 ```
 
+La suite valida el catálogo ampliado de **25 productos de prueba** (24 activos y 1 inactivo), sus 5 categorías y los cuatro casos de alerta de inventario.
+
 | Archivo | Pruebas | Qué cubre |
 | :--- | :---: | :--- |
 | `tests/backend/test_auth.py` | 3 | Login exitoso, contraseña incorrecta y usuario inexistente. |
 | `tests/backend/test_auth_roles.py` | 6 | Token ausente o inválido, lectura autorizada y rechazo de escrituras para `VENDEDOR`. |
-| `tests/backend/test_productos.py` | 7 | Listado, búsqueda, creación, stock obligatorio, duplicados, precios límite y desactivación lógica. |
-| `tests/backend/test_inventario_s1.py` | 5 | Alertas, ajuste de stock, bloqueo de saldo negativo, venta atómica y anti-sobreventa. |
-| `tests/backend/test_api_extra.py` | 20 | Health, errores HTTP, categorías, actualización de producto, historial y detalle de ventas. |
+| `tests/backend/test_productos.py` | 7 | Listado y búsqueda del catálogo de 25 productos, creación, stock obligatorio, duplicados, precios límite y desactivación lógica. |
+| `tests/backend/test_inventario_s1.py` | 5 | Alertas del catálogo ampliado, ajuste de stock, bloqueo de saldo negativo, venta atómica y anti-sobreventa. |
+| `tests/backend/test_api_extra.py` | 20 | Health, errores HTTP, 5 categorías, actualización de producto, historial y detalle de ventas. |
 | `tests/backend/test_usuarios.py` | 8 | Alta de colaboradores, roles, correo único, suspensión, revocación de sesión y restricción a `ADMIN`. |
 | **Total** | **49** | Autenticación, permisos, catálogo, inventario, ventas y administración de usuarios. |
 
@@ -750,6 +754,8 @@ TALLER-FINAL-main/
 │   │   └── 07-despliegue.png
 │   └── capturas/
 │       ├── panel-principal.png
+│       ├── productos.png
+│       ├── inventario.png
 │       └── nueva-venta.png
 ├── src/
 │   ├── backend/
@@ -861,6 +867,8 @@ git push origin entrega-final
 
 ## 14. Mejoras previstas
 
+> Estas mejoras **no forman parte del alcance implementado** en la entrega final. Se mantienen como backlog técnico y se documentan para futuras iteraciones.
+
 ### Prioridad alta
 
 1. Implementar el registro de compras/recepciones (RF-08) con actualización automática de stock.
@@ -875,7 +883,7 @@ git push origin entrega-final
 7. Obtener el usuario desde el token en lugar del cuerpo de la venta.
 8. Normalizar la serialización de valores `DECIMAL` en las respuestas JSON.
 9. Agregar paginación al listado de repuestos y ventas.
-10. Revisar y actualizar el tablero de Trello con la evidencia de cada integrante.
+10. Mantener el tablero de Trello actualizado con la evidencia de cada integrante.
 
 ### Prioridad baja
 
